@@ -64,7 +64,11 @@ async def endpoint() -> str | None:
     # SkyPilot may append a human-readable status message after the endpoint.
     # Stop at any whitespace rather than treating it as part of the URL.
     urls = re.findall(r'''https?://[^\s'"]+''', output)
-    return urls[-1].rstrip("/.,)") if urls else None
+    if urls:
+        return urls[-1].rstrip("/.,)")
+    # RunPod endpoints are commonly printed as a bare public IP and port.
+    addresses = re.findall(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}:\d+(?!\d)", output)
+    return f"http://{addresses[-1]}" if addresses else None
 
 
 async def ensure_model_is_ready() -> str:
