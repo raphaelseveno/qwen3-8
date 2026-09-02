@@ -1,11 +1,10 @@
-# SkyPilot task for the requested GGUF model with a persistent local disk cache.
+# SkyPilot task for the requested GGUF model.
 resources:
   accelerators: {L40S:1, A6000:1, A100-80GB:1}
   disk_size: 100
   ports: 8080
-  # A CUDA-enabled RunPod base image retains the SSH runtime SkyPilot needs.
-  # It also avoids relying on Docker-in-Docker, which RunPod pods do not offer.
-  image_id: docker:runpod/base:1.2.0-rc.162-cuda1281-ubuntu2204
+  # Prebuilt with RunPod's SSH runtime and the official llama.cpp CUDA server.
+  image_id: docker:sevenoraphael/qwen3-8-llama:cuda
 
 file_mounts:
   /tmp/qwen-model-server: ./skypilot/model-server
@@ -17,14 +16,8 @@ envs:
   CONTEXT_SIZE: "32768"
 
 setup: |
-  apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    aria2 ca-certificates build-essential cmake git
-  git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /opt/llama.cpp
-  cmake -S /opt/llama.cpp -B /opt/llama.cpp/build -DGGML_CUDA=ON \
-    -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF
-  cmake --build /opt/llama.cpp/build --target llama-server -j"$(nproc)"
-  install -m 0755 /opt/llama.cpp/build/bin/llama-server /usr/local/bin/llama-server
+  test -x /usr/local/bin/llama-server
+  command -v aria2c
 
 run: |
   mkdir -p ~/qwen-model-cache
