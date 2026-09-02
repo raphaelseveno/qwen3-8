@@ -1,0 +1,28 @@
+# One-time CPU-only model uploader. Run this instead of uploading over a home
+# Internet connection. It autodowns the VM once the verified upload finishes.
+resources:
+  # RunPod is the currently configured SkyPilot provider. This small GPU is
+  # requested only because RunPod does not offer CPU-only SkyPilot instances.
+  accelerators: RTXA4000:1
+  cpus: 4+
+  memory: 16+
+  disk_size: 20
+  autostop:
+    idle_minutes: 1
+    down: true
+
+file_mounts:
+  /app/scripts:
+    source: ./scripts
+
+envs:
+  R2_BUCKET: qwen3-8
+  R2_ENDPOINT: https://9dc0cf91dc991569a7f193ab71173242.r2.cloudflarestorage.com
+  R2_MODEL_KEY: Qwen3.8-27B-OBLITERATED-Q8_0.gguf
+  R2_MODEL_SHA256: afa839b2fa5bc890e5735031dda2c6239d3b6bba3b6ffa29477cbc14a2e1f221
+
+setup: |
+  python3 -m pip install --user --upgrade boto3 requests
+
+run: |
+  python3 /app/scripts/upload_model_to_r2.py
