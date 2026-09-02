@@ -1,0 +1,48 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      IDLE_MINUTES: "10"
+      SKY_CLUSTER: qwen-coding
+      SKY_TASK_FILE: /app/skypilot/model-server.yaml
+      MODEL_SERVER_IMAGE: ${MODEL_SERVER_IMAGE:-}
+      # SkyPilot runs on the Mac; Docker reaches its persistent control plane
+      # through Docker Desktop's host alias.
+      SKYPILOT_API_SERVER_ENDPOINT: http://host.docker.internal:46580
+    volumes:
+      # The gateway alone receives cloud orchestration credentials.
+      - /Users/raph/.sky:/root/.sky
+      - /Users/raph/.runpod:/root/.runpod:ro
+
+  openhands:
+    # Established web coding-agent UI. Configure the model endpoint in its
+    # Settings UI after starting (details in README).
+    # GHCR is the current official registry and works with this Docker Desktop
+    # installation; the legacy docker.all-hands.dev registry does not resolve.
+    image: ghcr.io/openhands/openhands:latest
+    restart: unless-stopped
+    ports:
+      - "${OPENHANDS_PORT:-3000}:3000"
+    environment:
+      AGENT_SERVER_IMAGE_REPOSITORY: ghcr.io/openhands/agent-server
+      AGENT_SERVER_IMAGE_TAG: 1.19.1-python
+      WORKSPACE_MOUNT_PATH: /workspace
+      # Agent containers are started outside this Compose network. They must
+      # call this instance through Docker Desktop's host gateway, not the
+      # other OpenHands instance already occupying host port 3000.
+      SANDBOX_HOST_PORT: 3001
+      LOG_ALL_EVENTS: "true"
+    volumes:
+      # Lets OpenHands create an isolated coding container for each task.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - openhands-state:/.openhands
+      # Your repositories. Open only repositories you trust the agent to edit.
+      - ./workspace:/workspace
+
+volumes:
+  openhands-state:
