@@ -1,6 +1,6 @@
 FROM ghcr.io/ggml-org/llama.cpp:server-cuda AS llama-server
 
-FROM runpod/base:1.2.0-rc.162-cuda1281-ubuntu2204
+FROM runpod/base:1.2.0-rc.162-cuda1281-ubuntu2404
 
 # Keep the RunPod base image's SSH/bootstrap behavior so SkyPilot can manage
 # it. Reuse llama.cpp's official CUDA build instead of compiling on GitHub.
