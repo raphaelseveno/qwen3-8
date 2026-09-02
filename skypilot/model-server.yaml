@@ -1,0 +1,32 @@
+# SkyPilot task for the requested GGUF model with a persistent local disk cache.
+resources:
+  accelerators: {L40S:1, A6000:1, A100-80GB:1}
+  disk_size: 100
+  ports: 8080
+  # A CUDA-enabled RunPod base image retains the SSH runtime SkyPilot needs.
+  # It also avoids relying on Docker-in-Docker, which RunPod pods do not offer.
+  image_id: docker:runpod/base:1.2.0-rc.162-cuda1281-ubuntu2204
+
+file_mounts:
+  /tmp/qwen-model-server: ./skypilot/model-server
+
+envs:
+  MODEL_DOWNLOAD_URL: https://huggingface.co/OBLITERATUS/Qwen3.8-27B-OBLITERATED/resolve/main/Qwen3.8-27B-OBLITERATED-Q8_0.gguf
+  MODEL_SHA256: afa839b2fa5bc890e5735031dda2c6239d3b6bba3b6ffa29477cbc14a2e1f221
+  MODEL_ID: qwen3.8-27b-obliterated-q8
+  CONTEXT_SIZE: "32768"
+
+setup: |
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    aria2 ca-certificates build-essential cmake git
+  git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /opt/llama.cpp
+  cmake -S /opt/llama.cpp -B /opt/llama.cpp/build -DGGML_CUDA=ON \
+    -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF
+  cmake --build /opt/llama.cpp/build --target llama-server -j"$(nproc)"
+  install -m 0755 /opt/llama.cpp/build/bin/llama-server /usr/local/bin/llama-server
+
+run: |
+  mkdir -p ~/qwen-model-cache
+  ln -sfn ~/qwen-model-cache /models
+  exec bash /tmp/qwen-model-server/start-model-server.sh
